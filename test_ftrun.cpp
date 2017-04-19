@@ -55,5 +55,23 @@ int main(int argc, char *argv[]) {
   // After ftruncate, we check whether ftruncate has the correct behavior.
   // If not, we should hack it with FALLOC_FL_PUNCH_HOLE
   static bool buggy = false;
-  fallocate(fd_, FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE, 5000, 4192);
+
+  if (!buggy && (file_stats.st_size + file_stats.st_blksize - 1) /
+          file_stats.st_blksize !=
+      file_stats.st_blocks / (file_stats.st_blksize / 512)) {
+    fprintf(stderr,
+            "WARNING: Your kernel is buggy (<= 4.0.x) and does not free"
+            "preallocated blocks on truncate. Hacking around it, but you"
+            "should upgrade!\n");
+    buggy = true;
+  }
+  if (buggy) {
+    IOSTATS_TIMER_GUARD(allocate_nanos);
+    if (allow_fallocate_) {
+      fallocate(fd_, FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE, 5000, 4192);
+    }
+    printf("wrong\n");
+  }else {
+    printf("right\n");
+  }
 }
